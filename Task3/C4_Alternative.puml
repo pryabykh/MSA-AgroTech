@@ -1,0 +1,56 @@
+@startuml
+!include ../puml_c4/C4_Component.puml
+
+title C4 Code Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "food_adapter.components" {
+    class "DeviceProtocolFactory" {
+        +getDevice(deviceId: String): Object
+        +connectToDevice(deviceId: String): boolean
+        -handleDeviceX(deviceId: String): boolean
+        -handleDeviceY(deviceId: String): boolean
+        -logError(message: String): void
+    }
+
+    class "DeviceController" {
+        +deviceId: String
+        +deviceType: String
+        +ipAddress: String
+        +port: int
+        +connectionString: String
+        +connect(): boolean
+        +disconnect(): void
+        +getStatus(): Object
+        +setSchedule(times: String, size: String): boolean
+        +getConsumption(): String
+    }
+}
+
+package "inventory.services" {
+    class "StockCalculationService" {
+        +connectionString: String
+        +calculateRemainingStock(feedType: String): double
+        +updateStockAfterFeeding(deviceId: String, amount: double): void
+        +getDailyConsumption(feedType: String): double
+        +sendSMSIfNeeded(level: double): void
+        +connectToDatabase(): void
+        -executeQuery(sql: String): ResultSet
+        -logToFile(message: String): void
+    }
+
+    class "ForecastLogic" {
+        +calculatePrediction(feedType: String): double
+        +getReorderPoint(): double
+    }
+}
+
+DeviceProtocolFactory --> DeviceController : создает (Object)
+DeviceController ..> DeviceProtocolFactory : обратная зависимость
+
+StockCalculationService --> ForecastLogic : создает внутри метода
+StockCalculationService ..> StockCalculationService : рекурсивные вызовы
+
+@enduml

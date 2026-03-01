@@ -1,0 +1,22 @@
+@startuml
+
+!include ../puml_c4/C4_Context.puml
+
+title Диаграмма C1 (MSA-AgroTech Animal Management System)
+
+top to bottom direction
+
+Person(administrator, "Административный персонал", "Управление через веб-портал")
+Person(stuff_on_duty, "Дежурные сотрудники", "Мониторинг состояния фермы")
+
+System(animal_management, "Система управления фермой")
+System_Ext(sms_system, "Система отправки СМС", "Отправляет СМС сообщения")
+System_Ext(monitoring_system, "Система сбора метрик", "Собирает метрики о работе системы")
+
+Rel(monitoring_system, animal_management, "Получает метрикир о работе системы")
+Rel(animal_management, sms_system, "Инициирует отправку СМС оповещения")
+Rel(sms_system, stuff_on_duty, "Отправляет СМС оповещение")
+Rel(stuff_on_duty, animal_management, "Наблюдает за феромой в режиме реального времени")
+Rel(administrator, animal_management, "Управляет фермой через внутренний веб-портал")
+
+@enduml

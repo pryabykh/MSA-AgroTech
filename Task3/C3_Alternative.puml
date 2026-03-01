@@ -1,0 +1,43 @@
+@startuml
+
+!include ../puml_c4/C4_Component.puml
+
+title Диаграмма C3 (Альтернативное решение - НЕ ПРИНЯТО)
+
+top to bottom direction
+
+' Внешние зависимости (контекст из C2)
+Container(api_gateway_for_web, "API Gateway", "React", "Единая точка входа")
+ContainerDb(postgresql, "PostgreSQL", "PostgreSQL", "База данных")
+Container(food_device_x, "Кормушка X", "C++", "Устройство производителя X")
+Container(food_device_y, "Кормушка Y", "C++", "Устройство производителя Y")
+
+' Граница первого контейнера: Адаптер кормушек (альтернатива)
+Container_Boundary(food_adapter_boundary, "food_adapter (Альтернатива)") {
+    Component(feeder_controller, "FeederController", "Spring REST", "Контроллер + бизнес-логика + работа с устройствами")
+    Component(db_access, "DirectDBAccess", "JDBC", "Прямой доступ к БД из контроллера")
+}
+
+' Граница второго контейнера: Сервис инвентаря (альтернатива)
+Container_Boundary(inventory_boundary, "inventory (Альтернатива)") {
+    Component(inventory_controller, "InventoryController", "Spring REST", "Контроллер + вся бизнес-логика в одном классе")
+    Component(sql_queries, "InlineSQL", "JDBC", "SQL-запросы прямо в коде контроллера")
+}
+
+' Связи: API Gateway -> Контроллеры
+Rel(api_gateway_for_web, feeder_controller, "REST: Запросы управления кормушками")
+Rel(api_gateway_for_web, inventory_controller, "REST: Запросы данных о запасах")
+
+' Связи: Внутри food_adapter (отсутствие разделения)
+Rel(feeder_controller, db_access, "Прямой вызов JDBC")
+Rel(feeder_controller, food_device_x, "Жестко закодированный протокол X")
+Rel(feeder_controller, food_device_y, "Жестко закодированный протокол Y (if-else)")
+
+' Связи: Внутри inventory (отсутствие разделения)
+Rel(inventory_controller, sql_queries, "SQL-запросы в теле метода")
+Rel(sql_queries, postgresql, "JDBC: Прямые запросы без ORM")
+
+' Связь между сервисами (tight coupling)
+Rel(feeder_controller, inventory_controller, "Прямой HTTP-вызов для обновления остатков", "Синхронно")
+
+@enduml
