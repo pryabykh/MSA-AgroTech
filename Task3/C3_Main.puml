@@ -1,0 +1,60 @@
+@startuml
+
+!include ../puml_c4/C4_Component.puml
+
+title Диаграмма C3 (MSA-AgroTech Animal Management System)
+
+top to bottom direction
+
+' Внешние зависимости (контекст из C2)
+Container(api_gateway_for_web, "API Gateway", "React", "Единая точка входа")
+ContainerDb(postgresql, "PostgreSQL", "PostgreSQL", "База данных")
+Container(food_device_x, "Кормушка X", "C++", "Устройство производителя X")
+Container(food_device_y, "Кормушка Y", "C++", "Устройство производителя Y")
+
+' Граница первого контейнера: Адаптер кормушек
+Container_Boundary(food_adapter_boundary, "food_adapter (Адаптер кормушек)") {
+    Component(feeder_api, "FeederApiController", "Spring REST", "Обработка запросов от Gateway (настройки, статус)")
+    Component(protocol_factory, "DeviceProtocolFactory", "Java", "Фабрика для выбора драйвера устройства")
+    Component(driver_x, "ManufacturerXDriver", "Java", "Реализация протокола для кормушек X")
+    Component(driver_y, "ManufacturerYDriver", "Java", "Реализация протокола для кормушек Y")
+    Component(telemetry_mapper, "TelemetryMapper", "Java", "Трансформация данных устройства во внутренний формат")
+}
+
+' Граница второго контейнера: Сервис инвентаря
+Container_Boundary(inventory_boundary, "inventory (Сервис запасов)") {
+    Component(inventory_api, "InventoryApiController", "Spring REST", "Обработка запросов от Gateway (остатки, прогнозы)")
+    Component(stock_service, "StockCalculationService", "Java", "Бизнес-логика учета остатков корма")
+    Component(forecast_service, "ExpenseForecastService", "Python/Java", "Алгоритм прогнозирования расхода")
+    Component(repo_service, "InventoryPersistenceService", "Spring Data JPA", "Слой доступа к данным")
+}
+
+' Связи: API Gateway -> Контроллеры
+Rel(api_gateway_for_web, feeder_api, "REST: Запросы управления кормушками")
+Rel(api_gateway_for_web, inventory_api, "REST: Запросы данных о запасах")
+
+' Связи: Внутри food_adapter
+Rel(feeder_api, protocol_factory, "Запрашивает драйвер для устройства")
+Rel(protocol_factory, driver_x, "Делегирует управление (Device X)")
+Rel(protocol_factory, driver_y, "Делегирует управление (Device Y)")
+Rel(driver_x, telemetry_mapper, "Передает сырые данные")
+Rel(driver_y, telemetry_mapper, "Передает сырые данные")
+
+' Связи: food_adapter -> Устройства
+Rel(driver_x, food_device_x, "Протокол X: Команды/Статус")
+Rel(driver_y, food_device_y, "Протокол Y: Команды/Статус")
+
+' Связи: Внутри inventory
+Rel(inventory_api, stock_service, "Запрос остатков/прогноза")
+Rel(stock_service, forecast_service, "Запрос расчета прогноза")
+Rel(stock_service, repo_service, "Запрос на сохранение/чтение")
+
+' Связи: inventory -> БД
+Rel(repo_service, postgresql, "JDBC: Чтение/Запись записей инвентаря")
+
+' Логическая связь (опционально, для полноты картины)
+' В реальном сценарии adapter должен уведомлять inventory о расходе
+' Здесь показано через штриховую линию как архитектурное ожидание
+Rel_D(feeder_api, stock_service, "Событие: Факт выдачи корма (логическая связь)", "Async/API")
+
+@enduml

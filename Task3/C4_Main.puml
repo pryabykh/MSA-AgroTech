@@ -1,0 +1,110 @@
+@startuml
+!include ../puml_c4/C4_Component.puml
+
+title C4 Code Diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+package "food_adapter.components" {
+    interface "IFeederDevice" {
+        +connect(): boolean
+        +disconnect(): void
+        +getStatus(): DeviceStatus
+        +setSchedule(Schedule): boolean
+        +getConsumption(): double
+    }
+
+    class "DeviceProtocolFactory" {
+        -devices: Map<String, IFeederDevice>
+        -logger: Logger
+        +getDevice(deviceId: String): IFeederDevice
+        +registerDevice(type: String, device: IFeederDevice): void
+        -validateDeviceId(id: String): boolean
+    }
+
+    class "ManufacturerXDevice" {
+        -connectionString: String
+        -timeout: int
+        +connect(): boolean
+        +disconnect(): void
+        +getStatus(): DeviceStatus
+        +setSchedule(Schedule): boolean
+        +getConsumption(): double
+        -translateProtocolX(): DeviceStatus
+    }
+
+    class "ManufacturerYDevice" {
+        -ipAddress: String
+        -port: int
+        +connect(): boolean
+        +disconnect(): void
+        +getStatus(): DeviceStatus
+        +setSchedule(Schedule): boolean
+        +getConsumption(): double
+        -translateProtocolY(): DeviceStatus
+    }
+
+    class "DeviceStatus" {
+        +isOnline: boolean
+        +foodLevel: double
+        +lastFeedTime: DateTime
+        +errorCodes: List<String>
+    }
+
+    class "Schedule" {
+        +feedTimes: List<DateTime>
+        +portionSize: double
+        +isActive: boolean
+    }
+}
+
+package "inventory.services" {
+    interface "IInventoryRepository" {
+        +getCurrentStock(feedType: String): double
+        +updateStock(feedType: String, amount: double): void
+        +getHistory(feedType: String, period: Period): List<StockRecord>
+    }
+
+    class "StockCalculationService" {
+        -repository: IInventoryRepository
+        -forecastService: IForecastService
+        -mapper: StockMapper
+        -logger: Logger
+        +calculateRemainingStock(feedType: String): double
+        +updateStockAfterFeeding(deviceId: String, amount: double): void
+        +getDailyConsumption(feedType: String): double
+        +validateStockLevel(feedType: String): StockValidationResult
+        -normalizeAmount(amount: double): double
+    }
+
+    interface "IForecastService" {
+        +predictConsumption(feedType: String, days: int): double
+        +getReorderRecommendation(feedType: String): ReorderInfo
+    }
+
+    class "StockMapper" {
+        +mapToDeviceUnits(amount: double, unit: String): double
+        +mapToStandardUnits(amount: double, unit: String): double
+    }
+
+    class "StockValidationResult" {
+        +isValid: boolean
+        +currentLevel: double
+        +minimumLevel: double
+        +recommendedAction: String
+    }
+}
+
+DeviceProtocolFactory ..> IFeederDevice : создает
+ManufacturerXDevice ..|> IFeederDevice : реализует
+ManufacturerYDevice ..|> IFeederDevice : реализует
+DeviceProtocolFactory --> DeviceStatus : использует
+DeviceProtocolFactory --> Schedule : использует
+
+StockCalculationService ..> IInventoryRepository : использует
+StockCalculationService ..> IForecastService : использует
+StockCalculationService --> StockMapper : использует
+StockCalculationService --> StockValidationResult : создает
+
+@enduml
