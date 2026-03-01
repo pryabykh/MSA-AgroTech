@@ -1,0 +1,64 @@
+@startuml
+
+!include ../puml_c4/C4_Container.puml
+
+title Диаграмма C2 (MSA-AgroTech Animal Management System)
+
+top to bottom direction
+
+Person(administrator, "Административный персонал", "Управление через веб-портал")
+Person(stuff_on_duty, "Дежурные сотрудники", "Мониторинг состояния фермы")
+
+Container(iam, "IAM", "Keycloak", "Идентификация, аутентификация, авторизация")
+
+Boundary(authorized, Только авторизованные пользователи) {
+    ContainerQueue(kafka, "Kafka", "Apache Kafka", "Брокер сообщений")
+    ContainerDb(postgresql, "PostgreSQL", "PostgreSQL", "База данных")
+    Container(front, "Веб-интерфейс (front-end)", "React", "Веб-интерфейс для взаимодействия пользователя с системой")
+
+    Boundary(back_end, Back-end) {
+      Container(api_gateway_for_web, "API Gateway для web интерфейса", "React", "Предоставляет единую точку входа для взаимодействия веб портала (api_gateway_for_web-end) с серверной логикой (back-end)")
+      Container(food_adapter, "Адаптер для кормушек", "Java (Spring Boot)", "Микросервис, взаимодействующий с кормушками разных производителей")
+      Container(water_adapter, "Адаптер для поилок", "Java (Spring Boot)", "Микросервис, взаимодействующий с поилками разных производителей")
+      Container(farm_events, "Сервис контроля поголовья скота", "Java (Spring Boot)", "Микросервис, получает данные с ПО компьютерного зрения, фиксирует полученные события")
+      Container(inventory, "Сервис отслеживания запасов еды и прогнозирования расходов", "Java (Spring Boot)", "Хранит текущее количество запасов еды, позволяет на основе этих данных делать прогнозы")
+    }
+
+    Boundary(devices, Устройства) {
+      Container(food_device_x, "Кормушка X", "C++", "Кормушка производителя X")
+      Container(food_device_y, "Кормушка Y", "C++", "Кормушка производителя Y")
+      Container(water_device_x, "Поилка X", "C++", "Поилка производителя X")
+      Container(water_device_y, "Поилка Y", "C++", "Поилка производителя Y")
+      Container(cv, "Компьютерное зрение", "Python", "ПО для компьютерного зрения, анализирует видеопоток, фиксирует события")
+    }
+}
+
+
+
+System_Ext(sms_system, "Система отправки СМС", "Отправляет СМС сообщения")
+System_Ext(monitoring_system, "Система сбора метрик", "Собирает метрики о работе системы")
+
+Rel(administrator, iam, "Получает токен для обращения в сервисы Back-end")
+Rel(stuff_on_duty, iam, "Получает токен для обращения в сервисы Back-end")
+Rel(administrator, front, "Настраивает и контролирует кормушки разных производителей")
+Rel(administrator, front, "Настраивает и контролирует поилки разных производителей")
+Rel(stuff_on_duty, front, "Наблюдает за событиями на ферме в режиме реального времени")
+Rel(front, api_gateway_for_web, "Общается с back-end через единую точку входа")
+Rel(api_gateway_for_web, food_adapter, "Взаимодействует с back-end логикой кормушек через единый API интерфейс")
+Rel(api_gateway_for_web, water_adapter, "Взаимодействует с back-end логикой поилок через единый API интерфейс")
+Rel(api_gateway_for_web, inventory, "Взаимодействует с back-end логикой запасов еды")
+Rel(api_gateway_for_web, farm_events, "Взаимодействует с back-end логикой по контролю поголовья скота")
+
+Rel(food_adapter, food_device_x, "Управляет настройками кормушки, использую интерфейс X, получает данные о работе устройства")
+Rel(food_adapter, food_device_y, "Управляет настройками кормушки, использую интерфейс Y, получает данные о работе устройства")
+Rel(water_adapter, water_device_x, "Управляет настройками поилки, использую интерфейс X, получает данные о работе устройства")
+Rel(water_adapter, water_device_y, "Управляет настройками поилки, использую интерфейс Y, получает данные о работе устройства")
+Rel(sms_system, stuff_on_duty, "Отправляет СМС оповещение")
+Rel(cv, kafka, "Отправляет события в очередь беспокойного поведения или драк среди животных, признаки задавливания поросят, гибель, беспокойство, количество скота")
+Rel(farm_events, kafka, "Читает из очереди события беспокойного поведения или драк среди животных, признаки задавливания поросят, гибель, беспокойство, количество скота")
+Rel(farm_events, sms_system, "Инициирует отправку СМС, если сотрудник пропустил важное событие")
+Rel(monitoring_system, farm_events, "Забирает метрики у микросервисов")
+Rel(inventory, postgresql, "Сохраняет и получает данные из БД")
+
+
+@enduml
